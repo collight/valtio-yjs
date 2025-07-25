@@ -242,6 +242,7 @@ function insertPValueToY<T>(
     }
     return;
   }
+
   if (y instanceof Y.Map && typeof k === 'string') {
     y.set(k, yv as T);
   } else if (y instanceof Y.Array && typeof k === 'number') {
