@@ -79,17 +79,17 @@ const transact = (doc: Y.Doc | null, opts: Options, fn: () => void) => {
   }
 };
 
-const toYValue = (val: any) => {
+function toYValue(
+  val: any,
+): string | number | boolean | null | Y.Array<unknown> | Y.Map<unknown> {
   if (isProxyArray(val)) {
     const arr = new Y.Array();
     arr.insert(
       0,
-      val.map(toYValue).filter((v) => v !== undefined && v !== null),
+      val.map(toYValue).filter((v) => v !== null),
     );
     return arr;
-  }
-
-  if (isProxyObject(val)) {
+  } else if (isProxyObject(val)) {
     const map = new Y.Map();
     Object.entries(val).forEach(([key, value]) => {
       const v = toYValue(value);
@@ -98,14 +98,12 @@ const toYValue = (val: any) => {
       }
     });
     return map;
-  }
-
-  if (isPrimitiveMapValue(val)) {
+  } else if (isPrimitiveMapValue(val)) {
     return val;
+  } else {
+    throw new Error('Proxy type must be serializable');
   }
-
-  return undefined;
-};
+}
 
 const toJSON = (yv: unknown) => {
   if (yv instanceof Y.AbstractType) {
@@ -235,12 +233,15 @@ function insertPValueToY<T>(
   y: Y.Map<T> | Y.Array<T>,
   k: number | string,
 ) {
-  const yv = toYValue(pv);
-  if (yv === undefined && process.env.NODE_ENV !== 'production') {
-    console.warn('unsupported p type', pv);
+  let yv: any;
+  try {
+    yv = toYValue(pv);
+  } catch {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('unsupported p type', pv);
+    }
     return;
   }
-
   if (y instanceof Y.Map && typeof k === 'string') {
     y.set(k, yv as T);
   } else if (y instanceof Y.Array && typeof k === 'number') {
